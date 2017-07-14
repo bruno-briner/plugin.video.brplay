@@ -13,7 +13,7 @@ BR Play
 
 ![screenshot-06.jpg](https://github.com/olavopeixoto/plugin.video.brplay/raw/develop/resources/screenshots/screenshot-06.jpg)
 
-![screenshot-07.jpg](hhttps://github.com/olavopeixoto/plugin.video.brplay/raw/develop/resources/screenshots/screenshot-07.jpg)
+![screenshot-07.jpg](https://github.com/olavopeixoto/plugin.video.brplay/raw/develop/resources/screenshots/screenshot-07.jpg)
 
 ![screenshot-08.jpg](https://github.com/olavopeixoto/plugin.video.brplay/raw/develop/resources/screenshots/screenshot-08.jpg)
 
