@@ -173,6 +173,22 @@ cookieFile = os.path.join(tempPath, 'cookies.dat')
 
 proxy_url = xbmcaddon.Addon().getSetting('proxy_url') if xbmcaddon.Addon().getSetting('use_proxy') == 'true' else None
 
+show_adult_content = xbmcaddon.Addon().getSetting('show_adult') == 'true'
+
+
+def is_globosat_available():
+    username = setting('globosat_username')
+    password = setting('globosat_password')
+
+    return username and password and username.strip() != '' and password.strip() != ''
+
+
+def is_globoplay_available():
+    username = setting('globoplay_username')
+    password = setting('globoplay_password')
+
+    return username and password and username.strip() != '' and password.strip() != ''
+
 
 def getKodiVersion():
     return infoLabel("System.BuildVersion").split(' ')[0]
