@@ -152,6 +152,10 @@ msgctxt "#32002"
 msgid "On Demand"
 msgstr ""
 
+msgctxt "#32005"
+msgid "Login"
+msgstr ""
+
 msgctxt "#32004"
 msgid "Live"
 msgstr ""
@@ -225,7 +229,7 @@ msgid "Streaming"
 msgstr ""
 
 msgctxt "#33101"
-msgid "Bandwidth"
+msgid "Player Mode"
 msgstr ""
 
 msgctxt "#33102"
@@ -252,6 +256,10 @@ msgctxt "#33107"
 msgid "Low"
 msgstr ""
 
+msgctxt "#33200"
+msgid "Average Download Speed"
+msgstr ""
+
 msgctxt "#33201"
 msgid "Proxy Type"
 msgstr ""
@@ -262,10 +270,6 @@ msgstr ""
 
 msgctxt "#33203"
 msgid "Redirect"
-msgstr ""
-
-msgctxt "#33204"
-msgid "Redirect Buffered"
 msgstr ""
 
 msgctxt "#33301"
@@ -280,12 +284,20 @@ msgctxt "#33402"
 msgid "Use Pagination"
 msgstr ""
 
+msgctxt "#33403"
+msgid "Ignore Channel Authorization"
+msgstr ""
+
 msgctxt "#33501"
 msgid "Clear Cache"
 msgstr ""
 
 msgctxt "#33502"
 msgid "Addon Maintenance"
+msgstr ""
+
+msgctxt "#33503"
+msgid "Clear Credentials"
 msgstr ""
 
 msgctxt "#34004"
@@ -298,6 +310,14 @@ msgstr ""
 
 msgctxt "#34006"
 msgid "Older Videos"
+msgstr ""
+
+msgctxt "#34007"
+msgid "More Videos"
+msgstr ""
+
+msgctxt "#34009"
+msgid "Select player mode:"
 msgstr ""
 
 msgctxt "#34010"
@@ -325,7 +345,7 @@ msgid "[I]- Recent Videos -[/I]"
 msgstr ""
 
 msgctxt "#34100"
-msgid "Stream is not available yet!"
+msgid "Stream is not available"
 msgstr ""
 
 msgctxt "#34101"
@@ -337,7 +357,7 @@ msgid "Video Resource Not Found"
 msgstr ""
 
 msgctxt "#34103"
-msgid "Content is DRM encrypted it won't play in Kodi at this moment"
+msgid "Content is DRM encrypted you need Kodi Leia (18) or later wih inputstream.adaptive addon enabled"
 msgstr ""
 
 msgctxt "#34104"
@@ -346,4 +366,12 @@ msgstr ""
 
 msgctxt "#34105"
 msgid "Authentication Failed"
+msgstr ""
+
+msgctxt "#34106"
+msgid "Local Programmes"
+msgstr ""
+
+msgctxt "#34107"
+msgid "4K - HDR"
 msgstr ""

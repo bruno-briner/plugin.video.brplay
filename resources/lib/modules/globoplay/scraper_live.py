@@ -4,14 +4,19 @@ from resources.lib.modules import control
 from resources.lib.modules import client
 from resources.lib.modules import util
 from resources.lib.modules import workers
+from resources.lib.modules import cache
 import datetime,re
 from sqlite3 import dbapi2 as database
 import time
+from scraper_vod import GLOBOPLAY_CONFIGURATION
 
 GLOBO_LOGO = 'http://s3.glbimg.com/v1/AUTH_180b9dd048d9434295d27c4b6dadc248/media_kit/42/f3/a1511ca14eeeca2e054c45b56e07.png'
 GLOBO_FANART = control.addonFanart()
 
 GLOBOPLAY_APIKEY = '35978230038e762dd8e21281776ab3c9'
+
+LOGO_BBB = 'https://s.glbimg.com/pc/gm/media/dc0a6987403a05813a7194cd0fdb05be/2014/12/1/7e69a2767aebc18453c523637722733d.png'
+FANART_BBB = 'http://s01.video.glbimg.com/x720/244881.jpg'
 
 
 def get_globo_live_id():
@@ -89,7 +94,33 @@ def get_live_channels():
     else:
         affiliates = [affiliate]
 
+    config = cache.get(client.request, 1, GLOBOPLAY_CONFIGURATION)
+
+    multicams = config['multicamLabel']
+
     live = []
+    for index, multicam in enumerate(multicams):
+        title = '%s %s' % (multicam['pre-name'], multicam['pos-name'])
+        live.append({
+            'slug': 'multicam' + str(index),
+            'name': title,
+            'studio': 'Rede Globo',
+            'title': title,
+            'tvshowtitle': title,
+            'sorttitle': title,
+            'logo': LOGO_BBB,
+            'clearlogo': LOGO_BBB,
+            'fanart': FANART_BBB,
+            'thumb': FANART_BBB,
+            'playable': 'false',
+            'plot': None,
+            'id': multicam['programId'],
+            'channel_id': config['channel_id'],
+            'duration': None,
+            'isFolder': 'true',
+            'brplayprovider': 'multicam'
+        })
+
     threads = [workers.Thread(__append_result, __get_affiliate_live_channels, live, affiliate) for affiliate in affiliates]
     [i.start() for i in threads]
     [i.join() for i in threads]
@@ -165,7 +196,7 @@ def __get_affiliate_live_channels(affiliate):
 
     program_description = get_program_description(live_program['program_id_epg'], live_program['program_id'], code)
 
-    control.log("program_description: %s" % repr(program_description))
+    control.log("globo live (%s) program_description: %s" % (code, repr(program_description)))
 
     item = {
         'plot': None,
@@ -180,13 +211,13 @@ def __get_affiliate_live_channels(affiliate):
 
     item.pop('datetimeutc', None)
 
-    title = program_description['title'] if 'title' in program_description else 'N/A'
-    subtitle = program_description['subtitle'] if 'subtitle' in program_description else 'N/A'
+    title = program_description['title'] if 'title' in program_description else live_program['title']
+    subtitle = program_description['subtitle'] if 'subtitle' in program_description else live_program['title']
 
     item.update({
         'slug': 'globo',
         'name': 'Globo ' + re.sub(r'\d+','',code) + '[I] - ' + title + '[/I]',
-        'title': subtitle, #'Globo ' + re.sub(r'\d+','',code) + '[I] - ' + program_description['title'] + '[/I]',
+        'title': subtitle,  # 'Globo ' + re.sub(r'\d+','',code) + '[I] - ' + program_description['title'] + '[/I]',
         'tvshowtitle': title,
         'sorttitle': 'Globo ' + re.sub(r'\d+','',code),
         'clearlogo': GLOBO_LOGO,
@@ -197,8 +228,17 @@ def __get_affiliate_live_channels(affiliate):
         'id': liveglobo,
         'channel_id': 196,
         'live': True,
-        'fanart': GLOBO_FANART
+        'livefeed': 'true'
     })
+
+    if 'fanart' not in item or not item['fanart']:
+        item.update({'fanart': GLOBO_FANART})
+
+    # if 'poster' not in item or not item['poster']:
+    #     item.update({'poster': live_program['poster']})
+
+    if 'thumb' not in item or not item['thumb']:
+        item.update({'thumb': live_program['poster']})
 
     return item
 
@@ -224,8 +264,10 @@ def __get_live_program(affiliate='RJ'):
 
 def get_program_description(program_id_epg, program_id, affiliate='RJ'):
 
-    today = datetime.datetime.utcnow() - datetime.timedelta(hours=8)  # GMT-3 epg timezone - Schedule starts at 5am = GMT-8
-    today = today if not today is None else datetime.datetime.utcnow() - datetime.timedelta(hours=8)  # GMT-3 - Schedule starts at 5am = GMT-8
+    utc_timezone = control.get_current_brasilia_utc_offset()
+
+    today = datetime.datetime.utcnow() - datetime.timedelta(hours=(5-utc_timezone))  # GMT-3 epg timezone - Schedule starts at 5am = GMT-8
+    today = today if not today is None else datetime.datetime.utcnow() - datetime.timedelta(hours=(5-utc_timezone))  # GMT-3 - Schedule starts at 5am = GMT-8
     today_string = datetime.datetime.strftime(today, '%Y-%m-%d')
 
     day_schedule = __get_or_add_full_day_schedule_cache(today_string, affiliate, 24)
@@ -247,7 +289,7 @@ def __get_or_add_full_day_schedule_cache(date_str, affiliate, timeout):
         t1 = int(match[1])
         t2 = int(time.time())
         update = (abs(t2 - t1) / 3600) >= int(timeout)
-        if update == False:
+        if update is False:
             control.log("Returning globoplay_schedule cached response for affiliate %s and date_str %s" % (affiliate, date_str))
             return response
     except Exception as ex:
@@ -273,6 +315,8 @@ def __get_or_add_full_day_schedule_cache(date_str, affiliate, timeout):
 
 def __get_full_day_schedule(today, affiliate='RJ'):
 
+    utc_timezone = control.get_current_brasilia_utc_offset()
+
     url = "https://api.globoplay.com.br/v1/epg/%s/praca/%s?api_key=%s" % (today, affiliate, GLOBOPLAY_APIKEY)
     headers = {'Accept-Encoding': 'gzip'}
     slots = client.request(url, headers=headers)['gradeProgramacao']['slots']
@@ -289,14 +333,14 @@ def __get_full_day_schedule(today, affiliate='RJ'):
                     castandrole_raw = cast_raw[1].strip().split('Elenco de dublagem:')
                     if len(castandrole_raw) > 1: #Dubladores e seus personagens
                         castandrole_raw = castandrole_raw[1].split('Outras Vozes:')
-                        castandrole = [(c.strip().split(':')[1].strip(), c.strip().split(':')[0].strip()) for c in castandrole_raw[0].split('/')]
+                        castandrole = [(c.strip().split(':')[1].strip(), c.strip().split(':')[0].strip()) for c in castandrole_raw[0].split('/')] if len(castandrole_raw[0].split('/')) > 0 else None
                         if len(castandrole_raw) > 1: #Outros dubladores sem papel definido
                             castandrole = [(c.strip(), 'Outros') for c in castandrole_raw[1].split('/')]
             except Exception as ex:
                 control.log("ERROR POPULATING CAST: %s" % repr(ex))
                 pass
 
-        program_datetime_utc = util.strptime_workaround(slot['data_exibicao_e_horario']) + datetime.timedelta(hours=3)
+        program_datetime_utc = util.strptime_workaround(slot['data_exibicao_e_horario']) + datetime.timedelta(hours=(-utc_timezone))
         program_datetime = program_datetime_utc + util.get_utc_delta()
 
         # program_local_date_string = datetime.datetime.strftime(program_datetime, '%d/%m/%Y %H:%M')
@@ -308,7 +352,7 @@ def __get_full_day_schedule(today, affiliate='RJ'):
             showtitle = slot['nome'] if 'nome' in slot else None
 
         next_start = slots[index+1]['data_exibicao_e_horario'] if index+1 < len(slots) else None
-        next_start = (util.strptime_workaround(next_start) + datetime.timedelta(hours=3) + util.get_utc_delta()) if next_start else datetime.datetime.now()
+        next_start = (util.strptime_workaround(next_start) + datetime.timedelta(hours=(-utc_timezone)) + util.get_utc_delta()) if next_start else datetime.datetime.now()
 
         item = {
             "tagline": slot['chamada'] if 'chamada' in slot else slot['nome'],
@@ -323,7 +367,7 @@ def __get_full_day_schedule(today, affiliate='RJ'):
             "thumb": slot['imagem'],
             "logo": slot['logo'],
             "clearlogo": slot['logo'],
-            "poster": slot['poster'] if 'poster' in slot else 'None',
+            "poster": slot['poster'] if 'poster' in slot else None,
             "subtitle": slot['nome'],
             "title": title,
             "plot": slot['resumo'] if 'resumo' in slot else None, #program_local_date_string + ' - ' + (slot['resumo'] if 'resumo' in slot else showtitle.replace(' - ', '\n') if showtitle and len(showtitle) > 0 else slot['nome_programa']),
@@ -361,3 +405,31 @@ def __get_full_day_schedule(today, affiliate='RJ'):
         result.append(item)
 
     return result
+
+
+def get_multicam(program_id):
+
+    headers = {'Accept-Encoding': 'gzip'}
+    url = 'https://api.globoplay.com.br/v1/programs/%s/live?api_key=%s' % (program_id, GLOBOPLAY_APIKEY)
+    response = client.request(url, headers=headers)
+
+    return [{
+        'plot': None,
+        'duration': None,
+        'brplayprovider': 'globoplay',
+        'logo': LOGO_BBB,
+        'slug': 'multicam_' + channel['description'].replace(' ','_').lower(),
+        'name': channel['description'],
+        'title': channel['description'],
+        'tvshowtitle': response['title'],
+        'sorttitle': "%02d" % (i,),
+        'clearlogo': LOGO_BBB,
+        'studio': 'Rede Globo',
+        'playable': 'true',
+        'id': channel['id'],
+        'channel_id': 196,
+        'live': True,
+        'livefeed': 'false',  #force vod hash
+        'fanart': FANART_BBB,
+        'thumb': channel['thumb'] + '?v=' + str(int(time.time()))
+    } for i, channel in enumerate(response['channels'])]

@@ -1,10 +1,8 @@
 # -*- coding: utf-8 -*-
 
-import urlparse, os, sys, json
+import os, json, threading
 
 import xbmc, xbmcaddon, xbmcplugin, xbmcgui, xbmcvfs
-
-integer = 1000
 
 lang = xbmcaddon.Addon().getLocalizedString
 
@@ -13,6 +11,8 @@ lang2 = xbmc.getLocalizedString
 setting = xbmcaddon.Addon().getSetting
 
 setSetting = xbmcaddon.Addon().setSetting
+
+openSettings = xbmcaddon.Addon().openSettings
 
 addon = xbmcaddon.Addon
 
@@ -143,8 +143,6 @@ listDir = xbmcvfs.listdir
 
 transPath = xbmc.translatePath
 
-log = xbmc.log
-
 skinPath = xbmc.translatePath('special://skin/')
 
 tempPath = xbmc.translatePath('special://temp/')
@@ -175,6 +173,73 @@ proxy_url = xbmcaddon.Addon().getSetting('proxy_url') if xbmcaddon.Addon().getSe
 
 show_adult_content = xbmcaddon.Addon().getSetting('show_adult') == 'true'
 
+__inputstream_addon_available = None
+
+ignore_channel_authorization = xbmcaddon.Addon().getSetting('ignore_channel_authorization') == 'true'
+
+is_4k_enabled =  xbmcaddon.Addon().getSetting('enable_4k') == 'true'
+
+is_4k_images_enabled =  xbmcaddon.Addon().getSetting('enable_4k_fanart') == 'true'
+
+
+def get_current_brasilia_utc_offset():
+    try:
+        import pytz
+        import datetime
+        import resources.lib.modules.util as util
+
+        sp_timezone = pytz.timezone('America/Sao_Paulo')
+        return util.get_total_seconds(datetime.datetime.now(sp_timezone).utcoffset()) / 60 / 60
+    except Exception as ex:
+        log("TIMEZONE ERROR: %s" % repr(ex))
+        return -3
+
+
+def get_inputstream_addon():
+    """Checks if the inputstream addon is installed & enabled.
+       Returns the type of the inputstream addon used and if it's enabled,
+       or None if not found.
+    Returns
+    -------
+    :obj:`tuple` of obj:`str` and bool, or None
+        Inputstream addon and if it's enabled, or None
+    """
+    type = 'inputstream.adaptive'
+    payload = {
+        'jsonrpc': '2.0',
+        'id': 1,
+        'method': 'Addons.GetAddonDetails',
+        'params': {
+            'addonid': type,
+            'properties': ['enabled']
+        }
+    }
+    response = xbmc.executeJSONRPC(json.dumps(payload))
+    data = json.loads(response)
+    if 'error' not in data.keys():
+        return type, data['result']['addon']['enabled']
+    return None, None
+
+
+def is_inputstream_available():
+    global __inputstream_addon_available
+
+    if __inputstream_addon_available is None:
+        lock = threading.RLock()
+
+        try:
+            lock.acquire()
+            if __inputstream_addon_available is None:
+                (inputstream_addon, inputstream_enabled) = get_inputstream_addon()
+                __inputstream_addon_available = inputstream_addon is not None and inputstream_enabled
+        except Exception as ex:
+            log("ERROR FINDING INPUTSTREAM ADDON, CONSIDERING MISSING: %s" % repr(ex))
+            __inputstream_addon_available = False
+        finally:
+            lock.release()
+
+    return __inputstream_addon_available
+
 
 def is_globosat_available():
     username = setting('globosat_username')
@@ -196,7 +261,7 @@ def getKodiVersion():
 
 def addonIcon():
     art = artPath()
-    if not (art == None): return os.path.join(art, 'icon.png')
+    if not (art is None): return os.path.join(art, 'icon.png')
     return addonInfo('icon')
 
 
@@ -209,19 +274,19 @@ def getBandwidthLimit():
 
 def addonThumb():
     art = artPath()
-    if not (art == None): return os.path.join(art, 'poster.png')
+    if not (art is None): return os.path.join(art, 'poster.png')
     return addonInfo('icon')
 
 
 def addonPoster():
     art = artPath()
-    if not (art == None): return os.path.join(art, 'poster.png')
+    if not (art is None): return os.path.join(art, 'poster.png')
     return 'DefaultVideo.png'
 
 
 def addonBanner():
     art = artPath()
-    if not (art == None): return os.path.join(art, 'banner.png')
+    if not (art is None): return os.path.join(art, 'banner.png')
     return 'DefaultVideo.png'
 
 
@@ -231,7 +296,7 @@ def addonFanart():
 
 def addonNext():
     art = artPath()
-    if not (art == None): return os.path.join(art, 'next.png')
+    if not (art is None): return os.path.join(art, 'next.png')
     return 'DefaultVideo.png'
 
 
@@ -257,13 +322,6 @@ def yesnoDialog(line1, line2, line3, heading=addonInfo('name'), nolabel='', yesl
 
 def selectDialog(list, heading=addonInfo('name')):
     return dialog.select(heading, list)
-
-
-def moderator():
-    netloc = [urlparse.urlparse(sys.argv[0]).netloc, '', 'plugin.video.live.streamspro', 'plugin.video.phstreams',
-              'plugin.video.cpstreams', 'plugin.video.streamarmy', 'plugin.video.tinklepad', 'plugin.video.metallic']
-
-    if not infoLabel('Container.PluginName') in netloc: sys.exit()
 
 
 def apiLanguage(ret_name=None):
@@ -333,13 +391,13 @@ def cdnImport(uri, name):
     path = path.decode('utf-8')
 
     deleteDir(os.path.join(path, ''), force=True)
-    makeFile(dataPath);
+    makeFile(dataPath)
     makeFile(path)
 
     r = client.request(uri)
     p = os.path.join(path, name + '.py')
-    f = openFile(p, 'w');
-    f.write(r);
+    f = openFile(p, 'w')
+    f.write(r)
     f.close()
     m = imp.load_source(name, p)
 
@@ -351,7 +409,7 @@ def openSettings(query=None, id=addonInfo('id')):
     try:
         idle()
         execute('Addon.OpenSettings(%s)' % id)
-        if query == None: raise Exception()
+        if query is None: raise Exception()
         c, f = query.split('.')
         execute('SetFocus(%i)' % (int(c) + 100))
         execute('SetFocus(%i)' % (int(f) + 200))
@@ -369,3 +427,14 @@ def idle():
 
 def queueItem():
     return execute('Action(Queue)')
+
+
+def clear_credentials():
+    setSetting("sexyhot_credentials", None)
+    setSetting("globosat_credentials", None)
+    setSetting("globoplay_credentials", None)
+
+
+def log(msg):
+    if setting('enable_log') == 'true':
+        xbmc.log('[plugin.video.brplay] - ' + msg, xbmc.LOGNOTICE)  # xbmc.LOGDEBUG

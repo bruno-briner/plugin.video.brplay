@@ -6,22 +6,22 @@ from BeautifulSoup import BeautifulSoup as bs
 
 artPath = control.artPath()
 
+
 def getChannels():
 
-    channels = []
-
-    channels.append({
-                'slug': 'sexyhot',
-                'name': 'Sexyhot',
-                'logo': os.path.join(artPath, 'logo_sexyhot.png'),
-                'fanart': os.path.join(artPath, 'fanart_sexyhot.png'),
-                'playable': 'false',
-                'plot': None,
-                'id': None,
-                'isFolder': 'true'
-                })
+    channels = [{
+        'slug': 'sexyhot',
+        'name': 'Sexyhot',
+        'logo': os.path.join(artPath, 'logo_sexyhot.png'),
+        'fanart': os.path.join(artPath, 'fanart_sexyhot.png'),
+        'playable': 'false',
+        'plot': None,
+        'id': None,
+        'isFolder': 'true'
+    }]
 
     return channels
+
 
 def get_categories():
 
@@ -45,6 +45,7 @@ def get_categories():
 
     return results
 
+
 def get_videos(url):
     from datetime import timedelta
     import time
@@ -63,7 +64,7 @@ def get_videos(url):
         oldUrl = url
         while next_page != None and next_page['data-page'] != None and next_page['data-orderby'] != None:
 
-            url = util.addUrlParameters(url, {
+            url = util.add_url_parameters(url, {
                 'pagina': int(next_page['data-page']) + 1,
                 'ordem': next_page['data-orderby']
             })
@@ -85,7 +86,7 @@ def get_videos(url):
     for item in items:
         div = item.find('div')
 
-        if div == None:
+        if div is None:
             continue
 
         img = item.find('img', attrs={'class': 'imagem'})
@@ -129,7 +130,7 @@ def get_videos(url):
         #More Videos
         if next_page != None and next_page['data-page'] != None and next_page['data-orderby'] != None:
 
-            next_page_url = util.addUrlParameters(url, {
+            next_page_url = util.add_url_parameters(url, {
                 'pagina': int(next_page['data-page']) + 1,
                 'ordem': next_page['data-orderby']
             })

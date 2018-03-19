@@ -28,7 +28,7 @@ class auth:
         self.session = requests.Session()
         try:
             self.proxy = control.proxy_url
-            self.proxy = None if self.proxy == None or self.proxy == '' else {
+            self.proxy = None if self.proxy is None or self.proxy == '' else {
                                                                   'http': self.proxy,
                                                                   'https': self.proxy,
                                                                 }
@@ -62,7 +62,7 @@ class auth:
                     control.log("returning cached session key: %s" % sessionId)
                 return token, sessionId
 
-        control.log("requesting token from provider: %s (%s)" % (self.PROVIDER_ID,self.OAUTH_URL))
+        control.log("requesting token from provider: %s (%s)" % (self.PROVIDER_ID, self.OAUTH_URL))
 
         # get a client_id token
         r1 = self.session.get(self.OAUTH_URL, proxies=self.proxy, headers={'Accept-Encoding': 'gzip'}, verify=False)
@@ -89,13 +89,13 @@ class auth:
             control.log('COOKIES: %s' % repr(dict(r3.cookies)))
 
             # control.log('VERIFYING HISTORY: %s' % pickle.dumps(r3))
-            # if r3.history:
-            #     control.log('HAS HISTORY (%s): %s' % (len(r3.history), repr(r3.history)))
-            #     last_response = r3.history[-1]
-            #     control.log('HISTORY COOKIES: %s' % dict(last_response.cookies))
-
+            if r3.history:
+                # control.log('HAS HISTORY (%s): %s' % (len(r3.history), repr(r3.history)))
+                last_response = r3.history[-1]
+                control.log('HISTORY COOKIES: %s' % dict(last_response.cookies))
+                token = dict(last_response.cookies)['ef77eccddf5ecefbb05d2218321937ff3c3de07ba4c9bc2ecae71312']
             sessionId = dict(r3.cookies)['sexyhotplay_sessionid']
-            token = qp.replace('code=', '')
+            # token = qp.replace('code=', '')
 
         self.credentials.update({
             ("token_%s" % str(self.PROVIDER_ID)): token,
@@ -176,14 +176,17 @@ class auth:
                 self._save_credentials()
             else:
                 control.log('wrong username or password')
-                control.infoDialog('[%s] %s' % (self.__class__.__name__, control.infoLabel(32003)), icon='ERROR')
-                pass
+                control.infoDialog('[%s] %s' % (self.__class__.__name__, control.lang('32003')), icon='ERROR')
+                return None
         elif self.is_authenticated(provider_id):
             control.log('already authenticated')
             pass
         else:
-            control.log('no username set to authenticate')
-            pass
+            control.log_warning('no username set to authenticate')
+            message = 'Missing user credentials'
+            control.infoDialog(message, icon='ERROR')
+            control.openSettings()
+            return None
 
         control.log("credentials: %s" % repr(self.credentials))
 
@@ -273,10 +276,6 @@ class vivo(auth):
     PROVIDER_ID = 147
 
     def _provider_auth(self, url, qs, username, password, html):
-        nova_url = re.findall('var urlString = \'(.*)\';', html)[0]
-        r2 = self.session.get(nova_url, proxies=self.proxy, headers={'Accept-Encoding': 'gzip'})
-        url, qs = r2.url.split('?', 1)
-        qs = urlparse.parse_qs(qs)
 
         cpf = username
         if len(cpf) == 11:
